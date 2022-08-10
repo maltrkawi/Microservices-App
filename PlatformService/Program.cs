@@ -11,28 +11,26 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseInMemoryDatabase("InMem"));
+if (builder.Environment.IsProduction())
+{
+    // sql server db configuration
+    Console.WriteLine("--> Using SQL Server DB");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseSqlServer(builder.Configuration.GetConnectionString("PlatformsConn")));
+}
+else
+{
+    // in-memory db configuration
+    Console.WriteLine("--> Using In-Memory DB");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseInMemoryDatabase("InMem"));
+}
+
 builder.Services.AddScoped<IPlatformRepo, PlatformRepo>();
 builder.Services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
-
-// My endpoints using minimal APIs
-//app.MapGet("/api/platforms", (IPlatformRepo repo, IMapper mapper) =>
-//{
-//    Console.WriteLine("--> Getting platforms...");
-//    var platforms = repo.GetAllPlatforms();
-//    return mapper.Map<IEnumerable<PlatformReadDto>>(platforms);
-//});
-
-//app.MapGet("/api/platforms/{id}", (int id, IPlatformRepo repo, IMapper mapper) =>
-//{
-//    Console.WriteLine("--> Getting platform by Id...");
-//    var platform = repo.GetPlatformById(id);
-//    return mapper.Map<IEnumerable<PlatformReadDto>>(platform);
-//});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -47,6 +45,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-SeedDb.SeedPopulation(app);
+SeedDb.SeedPopulation(app, builder.Environment.IsProduction());
 
 app.Run();
